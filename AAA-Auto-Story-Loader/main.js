@@ -1,7 +1,7 @@
 (async function () {
   // 版本和编译信息
-  const VERSION = "1.1";
-  const BUILD_TIME = "2025.08.20";
+  const VERSION = "1.3";
+  const BUILD_TIME = "2026.01.29";
 
   // 读取设置
   const team = settings.team || "";

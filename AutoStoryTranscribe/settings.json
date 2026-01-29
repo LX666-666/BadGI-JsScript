@@ -1,0 +1,154 @@
+[
+  {
+    "name": "questName",
+    "type": "input-text",
+    "label": "任务名称\n录制的任务名称，用于生成文件名",
+    "default": "默认"
+  },
+  {
+    "name": "questLocation",
+    "type": "input-text",
+    "label": "任务地点\n任务所在地点，用于组织文件夹",
+    "default": "默认"
+  },
+  {
+    "name": "forceTpFrist",
+    "type": "select",
+    "label": "\n首个地图追踪文件检测模式 \n - 此选项仅影响 XXX-1.json 地图追踪文件的起点类型 \n - 后续地图追踪json的起点类型，根据开始录制按键决定",
+    "options": [
+      "自动检测",
+      "录制时指定"
+    ],
+    "default": "自动检测"
+  },
+  {
+    "name": "keyStart",
+    "type": "select",
+    "label": "\n开始录制\n - 起点不需要传送",
+    "options": [
+      "角色C",
+      "背包B",
+      "教程G",
+      "好友O",
+      "任务J",
+      "联机F2",
+      "祈愿F3",
+      "纪行F4"
+    ],
+    "default": "联机F2"
+  },
+  {
+    "name": "keyStartTp",
+    "type": "select",
+    "label": "\n开始录制，并将起点设为需要传送\n - 注意要传送之后再开始录制",
+    "options": [
+      "角色C",
+      "背包B",
+      "教程G",
+      "好友O",
+      "任务J",
+      "联机F2",
+      "祈愿F3",
+      "纪行F4"
+    ],
+    "default": "好友O"
+  },
+  {
+    "name": "keyDialogue",
+    "type": "select",
+    "label": "保存路径+对话界面",
+    "options": [
+      "角色C",
+      "背包B",
+      "教程G",
+      "好友O",
+      "任务J",
+      "联机F2",
+      "祈愿F3",
+      "纪行F4"
+    ],
+    "default": "教程G"
+  },
+  {
+    "name": "keyFight",
+    "type": "select",
+    "label": "保存路径+战斗界面",
+    "options": [
+      "角色C",
+      "背包B",
+      "教程G",
+      "好友O",
+      "任务J",
+      "联机F2",
+      "祈愿F3",
+      "纪行F4"
+    ],
+    "default": "好友O"
+  },
+  {
+    "name": "keyPause",
+    "type": "select",
+    "label": "保存路径+暂停界面",
+    "options": [
+      "角色C",
+      "背包B",
+      "教程G",
+      "好友O",
+      "任务J",
+      "联机F2",
+      "祈愿F3",
+      "纪行F4"
+    ],
+    "default": "联机F2"
+  },
+  {
+    "name": "keySave",
+    "type": "select",
+    "label": "只保存路径界面",
+    "options": [
+      "角色C",
+      "背包B",
+      "教程G",
+      "好友O",
+      "任务J",
+      "联机F2",
+      "祈愿F3",
+      "纪行F4"
+    ],
+    "default": "纪行F4"
+  },
+  {
+    "name": "author",
+    "type": "input-text",
+    "label": "作者",
+    "default": ""
+  },
+  {
+    "name": "description",
+    "type": "input-text",
+    "label": "描述",
+    "default": ""
+  },
+  {
+    "name": "version",
+    "type": "input-text",
+    "label": "版本",
+    "default": "1.0"
+  },
+  {
+    "name": "autoFight",
+    "type": "checkbox",
+    "label": "启用自动战斗\n关闭后触发战斗时仅在文件中记录而不会实际调起自动战斗",
+    "default": true
+  },
+  {
+    "name": "noSkip",
+    "type": "checkbox",
+    "label": "关闭自动拾取"
+  },
+  {
+    "name": "noEat",
+    "type": "checkbox",
+    "label": "关闭自动吃药"
+  }
+]

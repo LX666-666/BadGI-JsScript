@@ -1,0 +1,72 @@
+[
+  {
+    "name": "questName",
+    "type": "input-text",
+    "label": "地图追踪名称",
+    "default": "默认"
+  },
+  {
+    "name": "questLocation",
+    "type": "input-text",
+    "label": "地图追踪文件夹名称",
+    "default": "默认"
+  },
+  {
+    "name": "mapType",
+    "type": "select",
+    "label": "选择地图",
+    "options": [
+      "自动检测",
+      "提瓦特大陆",
+      "层岩巨渊",
+      "渊下宫",
+      "旧日之海",
+      "远古圣山"
+    ],
+    "default": "自动检测"
+  },
+  {
+    "name": "start",
+    "type": "select",
+    "label": "起始点类型",
+    "options": [
+      "传送点",
+      "当前位置"
+    ],
+    "default": "传送点"
+  },
+  {
+    "name": "trackNumber",
+    "type": "input-text",
+    "label": "地图追踪编号\n命名格式：Pathing\\地图追踪文件夹\\地图追踪名称-地图追踪编号.json",
+    "default": 1
+  },
+  {
+    "name": "runMode",
+    "type": "select",
+    "label": "运行模式",
+    "options": [
+      "录制模式",
+      "运行模式"
+    ],
+    "default": "录制模式"
+  },
+  {
+    "name": "author",
+    "type": "input-text",
+    "label": "作者",
+    "default": ""
+  },
+  {
+    "name": "description",
+    "type": "input-text",
+    "label": "描述",
+    "default": ""
+  },
+  {
+    "name": "version",
+    "type": "input-text",
+    "label": "版本",
+    "default": "1.0"
+  }
+]

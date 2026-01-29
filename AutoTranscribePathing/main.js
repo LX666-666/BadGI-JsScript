@@ -204,18 +204,39 @@ function processMoveModes() {
       continue;
     }
 
-    // 攀爬段：从 CLIMB 开始，直到非 CLIMB 结束；<15s 设 jump，否则设 climb，并回溯15单位将 dash 改为 walk
+    // 攀爬段：从 CLIMB 开始，直到非 CLIMB 结束；<10s 设 jump，否则设 climb，并回溯10单位将 dash 改为 walk
     if (currentState === MOVE_STATE.CLIMB) {
       let end = i;
       while (end + 1 < positions.length && positions[end + 1].state === MOVE_STATE.CLIMB) end++;
       const climbStart = i;
-      const climbEnd = end;
+      const originalEndPos = positions[end];
+
+      // CLIMB 副作用小，可以弥补精度问题
+      let climbEnd = end;
+      let extensionIndex = climbEnd + 1;
+      // 将最后一个 CLIMB 点之后1 0 单位距离内的连续点都标记为 CLIMB
+      while (extensionIndex < positions.length) {
+        const dist = distance(originalEndPos, positions[extensionIndex]);
+        if (dist <= 10) {
+          positions[extensionIndex].state = MOVE_STATE.CLIMB;
+          climbEnd = extensionIndex;
+          extensionIndex++;
+        } else {
+          break;
+        }
+      }
+
+      /*
       const climbPointsCount = positions[climbStart].__climb_points_count || (climbEnd - climbStart + 1);
       const climbDurationSeconds = climbPointsCount * 0.9;
-      const climbMode = climbDurationSeconds < 15 ? MOVE_MODES.JUMP : MOVE_MODES.CLIMB;
+      */
+      // 通过时间戳判断攀爬时间
+      const climbDurationSeconds = (positions[climbEnd].timestamp - positions[climbStart].timestamp) / 1000;
+      // 小于10秒可以用跳跃
+      const climbMode = climbDurationSeconds < 10 ? MOVE_MODES.JUMP : MOVE_MODES.CLIMB;
       for (let k = climbStart; k <= climbEnd; k++) positions[k].move_mode = climbMode;
-      
-      // 回溯 15 单位，将 dash 改为 walk（仅当为长攀爬时）
+
+      // 回溯 10 单位，将 dash 改为 walk（仅当为长攀爬时）
       if (climbMode === MOVE_MODES.CLIMB) {
         let backDistAccum = 0;
         for (let j = climbStart - 1; j >= 0; j--) {
@@ -224,14 +245,14 @@ function processMoveModes() {
             { x: positions[j].x, y: positions[j].y }
           );
           backDistAccum += segDist;
-          if (backDistAccum >= 15) break;
+          if (backDistAccum >= 10) break;
           if (positions[j].move_mode === MOVE_MODES.DASH) {
             positions[j].move_mode = MOVE_MODES.WALK;
           }
         }
       }
 
-      i = end + 1;
+      i = climbEnd + 1;
       continue;
     }
 

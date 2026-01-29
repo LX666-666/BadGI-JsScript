@@ -1326,7 +1326,7 @@ const isInMainUI = () => {
             pushInstr("交互", arg);
             break;
           case "等待返回主界面":
-            pushInstr("等待返回主界面", parseInt(arg || "120", 10) || 120);
+            pushInstr("等待返回主界面", parseInt(arg || "600", 10) || 120);
             break;
           case "追踪图标":
             pushInstr("追踪图标", arg);

@@ -1,6 +1,6 @@
 (async function () {
   // 版本和编译信息
-  const VERSION = "1.3";
+  const VERSION = "1.3。1";
   const BUILD_TIME = "2026.01.29";
 
   // 读取设置
@@ -1353,6 +1353,9 @@ const isInMainUI = () => {
             pushInstr("自动拾取", arg);
             break;
           }
+          case "切换":
+            pushInstr("切换", arg);
+            break;
           default: {
             // 兼容旧格式：F xxx => 对话 xxx
             if (/^F$/i.test(cmd) && arg) {
@@ -1386,6 +1389,7 @@ const isInMainUI = () => {
       const META = simpleScript.meta || {};
       const BLOCKS = Array.isArray(simpleScript.blocks) ? simpleScript.blocks : [];
       const defaultBlock = BLOCKS.find(b => b.isDefault) || null;
+      let originalTeam = null;  // 存储原始队伍，用于"切换 原来队伍"恢复
 
       if (META.author) log.info("作者: {author}", META.author);
       if (META.description) log.info("描述: {desc}", META.description);
@@ -1503,6 +1507,50 @@ const isInMainUI = () => {
           case "战斗":
             await dispatcher.runTask(new SoloTask("AutoFight"));
             break;
+          case "切换": {
+            // 通用切换函数
+            const switchToCharacters = async (targetChars) => {
+              const currentTeam = Array.from(getAvatars() || []);
+              const aliases = Utils.readAliases();
+              for (let i = 0; i < targetChars.length; i++) {
+                const char = targetChars[i];
+                const name = aliases[char] || char;
+                if (currentTeam.includes(name)) {
+                  log.info(`${name} 已在队伍中，跳过`);
+                  continue;
+                }
+                if (!await StepProcessor.processSwitchRole({ data: { position: i + 1, character: char } })) {
+                  log.error(`切换失败：第${i + 1}号位 ${char}`);
+                  return false;
+                }
+              }
+              return true;
+            };
+
+            const args = data.trim().split(/\s+/);
+            if (args[0] === "原来队伍") {
+              if (!originalTeam || originalTeam.length === 0) {
+                log.warn("未记录原始队伍，无法恢复");
+                break;
+              }
+              log.info("开始恢复原始队伍");
+              if (!await switchToCharacters(originalTeam)) log.warn("恢复失败");
+              originalTeam = null;
+              log.info("已恢复原始队伍");
+            } else {
+              if (!originalTeam) {
+                originalTeam = Array.from(getAvatars() || []);
+                log.info(`记录原始队伍: ${originalTeam.join(", ")}`);
+              }
+              if (!await switchToCharacters(args.slice(0, 4))) log.warn("切换失败");
+              log.info("角色切换完成");
+            }
+            keyPress("VK_ESCAPE");
+            await sleep(500);
+            keyPress("VK_ESCAPE");
+            await sleep(500);
+            break;
+          }
           default:
             log.warn("未实现的指令类型: {type}", type);
         }
@@ -1660,7 +1708,7 @@ const isInMainUI = () => {
         if (iconType === "Bigmap") {
           boxIconRo = RecognitionObject.TemplateMatch(
             file.ReadImageMatSync(
-              "Data/RecognitionObject/IconBigmapCommission.jpg"
+              "Data/RecognitionObject/Commission/IconBigmapCommission.jpg"
             )
           );
           log.info("使用大地图图标");
@@ -1668,7 +1716,7 @@ const isInMainUI = () => {
         else if (iconType === "Question") {
           boxIconRo = RecognitionObject.TemplateMatch(
             file.ReadImageMatSync(
-              "Data/RecognitionObject/IconQuestionCommission.png"
+              "Data/RecognitionObject/Commission/IconQuestionCommission.png"
             )
           );
           log.info("使用问号任务图标");
@@ -1677,7 +1725,7 @@ const isInMainUI = () => {
           // 默认使用任务图标
           boxIconRo = RecognitionObject.TemplateMatch(
             file.ReadImageMatSync(
-              "Data/RecognitionObject/IconTaskCommission.png"
+              "Data/RecognitionObject/Commission/IconTaskCommission.png"
             )
           );
           log.info("使用任务图标");
@@ -2476,7 +2524,7 @@ async function switchPartyIfNeeded(partyName) {
       }
   } catch {
       log.error("队伍切换失败，可能处于联机模式或其他不可切换状态");
-      notification.error(`队伍切换失败，可能处于联机模式或其他不可切换状态`);
+      notification.error(`切换失败，可能处于联机模式或其他不可切换状态`);
       await genshin.returnMainUi();
   }
 }

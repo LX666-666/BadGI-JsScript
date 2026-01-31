@@ -36,6 +36,6 @@
   {
     "name": "useBreakPoint",
     "type": "checkbox",
-    "label": "从上次中断点继续（如果有）"
+    "label": "从上次中断点继续（如果有断点文件resuming再勾）"
   }
 ]

@@ -1,12 +1,13 @@
 (async function () {
   // 版本和编译信息
-  const VERSION = "1.3。1";
-  const BUILD_TIME = "2026.01.29";
+  const VERSION = "1.4";
+  const BUILD_TIME = "2026.02.01";
 
   // 读取设置
   const team = settings.team || "";
   const elementTeam = settings.elementTeam || "";
   const selectedProcess = settings.process_selector || "刷新剧情列表";
+  let relativePath;
 
   async function errorlog() {
     // 输出版本和编译时间信息
@@ -229,10 +230,11 @@ const isInMainUI = () => {
   // TAG:添加脚本功能点1
   const StepProcessor = {
     // 处理地图追踪步骤
-    processMapTracking: async (step, commissionName, location) => {
-      const fullPath = `${
-        Datas.TALK_PROCESS_BASE_PATH
-      }/${commissionName}/${location}/${step.data || step}`;
+    processMapTracking: async (step, processFilePath) => {
+      //log.info("1");
+      const normalizedPath = processFilePath.replace(/\\/g, '/');
+      const processDir = normalizedPath.substring(0, normalizedPath.lastIndexOf('/'));
+      const fullPath = `${processDir}/${step.data}`;
       log.info("执行地图追踪: {path}", fullPath);
       try {
         await pathingScript.runFile(fullPath);
@@ -271,10 +273,12 @@ const isInMainUI = () => {
     },
 
     // 处理键鼠脚本步骤
-    processKeyMouseScript: async (step, commissionName, location) => {
-      log.info("执行键鼠脚本: {path}", step.data);
+    processKeyMouseScript: async (step, processFilePath) => {
+      const normalizedPath = processFilePath.replace(/\\/g, '/');
+      const processDir = normalizedPath.substring(0, normalizedPath.lastIndexOf('/'));
+      const fullPath = `${processDir}/${step.data}`;
+      log.info("执行键鼠脚本: {path}", fullPath);
       try {
-        const fullPath = `${Datas.TALK_PROCESS_BASE_PATH}/${commissionName}/${location}/${step.data}`;
         await keyMouseScript.runFile(fullPath);
         log.info("键鼠脚本执行完成");
       } catch (error) {
@@ -326,127 +330,6 @@ const isInMainUI = () => {
       }
       if (!isInMainUI()) {
         log.info("等待返回主界面超时，尝试继续执行后续步骤");
-      }
-    },
-
-    // 处理地址检测步骤
-    processLocationDetection: async (
-      step,
-      commissionName,
-      location,
-      processSteps,
-      currentIndex
-    ) => {
-      if (Array.isArray(step.data) && step.data.length >= 2) {
-        log.info(
-          `地址检测: {${step.data[0]}},{${step.data[1]}},run:${step.run}`
-        );
-
-        try {
-          // 获取当前委托目标位置
-          let commissionTarget = await Execute.findCommissionTarget(
-            commissionName
-          );
-
-          if (commissionTarget) {
-            const distance2 = CommissionsFunc.calculateDistance(
-              commissionTarget,
-              {
-                x: step.data[0],
-                y: step.data[1],
-              }
-            );
-
-            log.info(
-              "地址检测 - 委托位置: ({x}, {y}), 目标位置: ({tx}, {ty}), 距离: {d}",
-              commissionTarget.x,
-              commissionTarget.y,
-              step.data[0],
-              step.data[1],
-              distance2
-            );
-
-            if (distance2 < 15) {
-              log.info("地址检测成功，执行后续步骤");
-              const nextSteps = await Execute.loadAndParseProcessFile(
-                commissionName,
-                location,
-                step.run
-              );
-              // 插入到processSteps的这一步后面
-              if (nextSteps && Array.isArray(nextSteps)) {
-                processSteps.splice(currentIndex + 1, 0, ...nextSteps);
-                log.info("已插入 {count} 个后续步骤", nextSteps.length);
-              }
-            } else {
-              log.info("地址检测失败，距离过远: {distance}", distance2);
-            }
-          } else {
-            log.warn("无法获取委托目标位置，跳过地址检测");
-          }
-        } catch (error) {
-          log.error("地址检测时出错: {error}", error.message);
-          throw error;
-        }
-      } else {
-        log.error("地址检测参数格式错误");
-        throw new Error("地址检测参数格式错误");
-      }
-    },
-
-    // 处理委托描述检测步骤
-    processCommissionDescriptionDetection: async (
-      step,
-      commissionName,
-      location,
-      processSteps,
-      currentIndex
-    ) => {
-      // 按v键打开任务界面
-      keyPress("v");
-      await sleep(300);
-
-      if (step.data !== "") {
-        log.info(`委托描述检测: {${step.data}}`);
-
-        // 循环检测，直到稳定
-        for (let c = 0; c < 13; c++) {
-          try {
-            // 使用委托详情检测区域进行OCR
-            const taskRegion = { X: 75, Y: 240, WIDTH: 280, HEIGHT: 43 };
-            const ocrResult = await Utils.easyOCROne(taskRegion);
-            if (ocrResult === commissionName || ocrResult === "") {
-              await sleep(1000);
-              // 没有延时13s的错误提示，继续检测
-              log.debug("检测到委托名称或空文本，继续等待...");
-              keyPress("v");
-            }
-            // 成功匹配，开始插入step
-            else if (ocrResult === step.data) {
-              log.info("委托描述检测成功，执行后续步骤");
-              const nextSteps = await Execute.loadAndParseProcessFile(
-                commissionName,
-                location,
-                step.run
-              );
-              // 插入到这一步后面
-              if (nextSteps && Array.isArray(nextSteps)) {
-                processSteps.splice(currentIndex + 1, 0, ...nextSteps);
-                log.info("已插入 {count} 个后续步骤", nextSteps.length);
-              }
-              break;
-            } else {
-              log.warn(`委托描述不匹配,识别：${ocrResult},期望：${step.data}`);
-              break;
-            }
-          } catch (ocrError) {
-            log.error("委托描述OCR识别出错: {error}", ocrError);
-            break;
-          }
-        }
-      } else {
-        log.error("委托描述检测参数格式错误");
-        throw new Error("委托描述检测参数格式错误");
       }
     },
 
@@ -671,8 +554,7 @@ const isInMainUI = () => {
       地图追踪: async (step, context) => {
         await StepProcessor.processMapTracking(
           step,
-          context.commissionName,
-          context.location
+          context
         );
       },
 
@@ -689,8 +571,7 @@ const isInMainUI = () => {
       键鼠脚本: async (step, context) => {
         await StepProcessor.processKeyMouseScript(
           step,
-          context.commissionName,
-          context.location
+          context
         );
       },
 
@@ -713,21 +594,6 @@ const isInMainUI = () => {
 
       等待返回主界面: async (step, context) => {
         await StepProcessor.processWaitMainUI();
-      },
-
-      地址检测: async (step, context) => {
-        //await StepProcessor.processLocationDetection(step,context.commissionName,context.location,context.processSteps,context.currentIndex);
-        log.info("地址检测当前版本用不了，请联请联系作者获取最新版");
-      },
-
-      委托描述检测: async (step, context) => {
-        await StepProcessor.processCommissionDescriptionDetection(
-          step,
-          context.commissionName,
-          context.location,
-          context.processSteps,
-          context.currentIndex
-        );
       },
 
       切换角色: async (step, context) => {
@@ -1189,21 +1055,17 @@ const isInMainUI = () => {
     // 寻找委托目的地址带追踪任务
     // 读取并解析流程文件为步骤数组
     loadAndParseProcessFile: async (
-      commissionName,
-      location,
-      locationprocessFilePath = "process.json"
+      process_path
     ) => {
-      const processFilePath = `${Datas.TALK_PROCESS_BASE_PATH}/${commissionName}/${location}/${locationprocessFilePath}`;
+      const processFilePath = process_path;
       let processContent;
       let processSteps;
       try {
         processContent = await file.readText(processFilePath);
-        log.info("找到对话委托流程文件: {path}", processFilePath);
+        log.info("找到流程文件: {path}", processFilePath);
       } catch (error) {
         log.warn(
-          "未找到对话委托 {name} 在 {location} 的流程文件: {path}",
-          commissionName,
-          location,
+          "未找到流程文件: {path}",
           processFilePath
         );
         return false;
@@ -1384,7 +1246,7 @@ const isInMainUI = () => {
     },
 
     // 执行扩展的简单格式脚本
-    executeSimpleScriptFlow: async (simpleScript, commissionName, location) => {
+    executeSimpleScriptFlow: async (simpleScript, process_path) => {
       const isInMainUI = UIUtils.createMainUIChecker();
       const META = simpleScript.meta || {};
       const BLOCKS = Array.isArray(simpleScript.blocks) ? simpleScript.blocks : [];
@@ -1434,10 +1296,10 @@ const isInMainUI = () => {
         const data = instr.data;
         switch (type) {
           case "地图追踪":
-            await StepProcessor.processMapTracking({ data }, commissionName, location);
+            await StepProcessor.processMapTracking({ data }, process_path);
             break;
           case "键鼠脚本":
-            await StepProcessor.processKeyMouseScript({ data }, commissionName, location);
+            await StepProcessor.processKeyMouseScript({ data }, process_path);
             break;
           case "对话": {
             // 优先点击NPC名
@@ -1565,16 +1427,14 @@ const isInMainUI = () => {
       // 如果没有任务描述块，只有默认块，则直接执行默认块一次后返回
       if (!hasTaskBlocks && defaultBlock) {
         log.info("脚本中无任务描述块，直接执行默认块");
+        //log.info("位置: {path}", process_path);
         while (0 < defaultBlock.instructions.length) {
           const instr = defaultBlock.instructions[0];
           const res = await executeInstruction(instr);
 
           log.info("当前流程执行完毕，更新断点文件");
           defaultBlock.instructions.splice(0, 1);
-          file.writeTextSync(
-            `resuming/${commissionName}/${location}/process.json`,
-            JSON.stringify(simpleScript, null, 2)
-          );
+          file.writeTextSync(`resuming/${relativePath}`, JSON.stringify(simpleScript, null, 2));
           if (res === "DONE") {
             log.info("收到任务完成指令，任务完成");
             return true;
@@ -1608,7 +1468,7 @@ const isInMainUI = () => {
             const descriptionNorms = Array.from(resumingMap.keys());
             const blocks = descriptionNorms.flatMap(norm => resumingMap.get(norm));
             const simpleScript = { meta: META,blocks: blocks};
-            file.writeTextSync(`resuming/${commissionName}/${location}/process.json`, JSON.stringify(simpleScript, null, 2));
+            file.writeTextSync(`resuming/${relativePath}`, JSON.stringify(simpleScript, null, 2));
           } catch (error) {
             log.error(`更新断点文件时出错{error}`, error.message);
             break;
@@ -1664,32 +1524,32 @@ const isInMainUI = () => {
     },
 
     // 执行对话委托流程（优化版）
-    executeTalkCommission: async (commissionName, location) => {
+    executeTalkCommission: async (process_path) => {
       try {
-        const processSteps = await Execute.loadAndParseProcessFile(
-          commissionName,
-          location,
-          "process.json"
-        );
+
+        const processSteps = await Execute.loadAndParseProcessFile(process_path);
+
+        //log.info("文件位置: {path}", process_path);
 
         // 使用统一的处理器执行流程
         if (processSteps && processSteps.__simpleScript) {
           if (settings.useBreakPoint) {
             try {
               log.info("尝试读取断点文件");
-              const simpleScript = JSON.parse(file.readTextSync(`resuming/${commissionName}/${location}/process.json`));
-              return await Execute.executeSimpleScriptFlow(simpleScript, commissionName, location);
+              // 拼接断点文件路径
+              const breakpointFilePath = `resuming/${relativePath}`;
+              const simpleScript = JSON.parse(file.readTextSync(breakpointFilePath));
+              return await Execute.executeSimpleScriptFlow(simpleScript, process_path);
             } catch (error) {
               log.debug(`读取断点文件时出错: {error}`, error.message);
               log.info("未找到断点文件，执行完整任务流程");
             }
           }
-          return await Execute.executeSimpleScriptFlow(processSteps.script, commissionName, location);
+          return await Execute.executeSimpleScriptFlow(processSteps.script, process_path);
         }
         return await Execute.executeUnifiedTalkProcess(
           processSteps,
-          commissionName,
-          location
+          process_path
         );
       } catch (error) {
         log.error("执行对话委托时出错: {error}", error.message);
@@ -2008,8 +1868,7 @@ const isInMainUI = () => {
         // 地图追踪文件
         await StepProcessor.processMapTracking(
           step,
-          context.commissionName,
-          context.location
+          process_path
         );
       } else if (step === "F") {
         // 按F键并执行优化的自动剧情
@@ -2153,34 +2012,6 @@ const isInMainUI = () => {
       } catch (error) {
         log.error("获取委托目标坐标时出错: {error}", error.message);
         return null;
-      }
-    },
-
-    // 执行带分支的对话委托流程（从main_branch.js移植）
-    executeTalkCommissionWithBranches: async (processPath) => {
-      try {
-        log.info("开始执行对话委托流程: {path}", processPath);
-
-        // 读取流程文件
-        const processContent = await file.readText(processPath);
-
-        // 解析流程内容
-        const branches = CommissionsFunc.parseProcessBranches(processContent);
-
-        // 确定要执行的分支
-        const branchToExecute = await CommissionsFunc.determineBranch(branches);
-
-        if (branchToExecute) {
-          log.info("执行分支: {id}", branchToExecute.id);
-          await Execute.executeUnifiedTalkProcess(branchToExecute.steps);
-        } else {
-          log.warn("没有找到匹配的分支，执行默认流程");
-          // 尝试解析整个内容作为单一流程
-          const steps = JSON.parse(processContent);
-          await Execute.executeUnifiedTalkProcess(steps);
-        }
-      } catch (error) {
-        log.error("执行对话委托流程出错: {error}", error.message);
       }
     },
 
@@ -2354,29 +2185,49 @@ const isInMainUI = () => {
   const Main = async () => {
     log.debug("版本: {version}", VERSION);
     try {
+      if (!settings.pause) {
+        log.error("请在JS脚本自定义配置中配置暂停键");
+        log.error("暂停键需与”BetterGI-快捷键-暂停当前脚本“的快捷键相同");
+        log.error("例如快捷键设置F10，暂停键VK_字符设置“VK_F10”或“F10”");
+        log.error("");
+        log.error("请在JS脚本自定义配置中配置暂停键");
+        log.error("暂停键需与”BetterGI-快捷键-暂停当前脚本“的快捷键相同");
+        log.error("例如快捷键设置F10，暂停键VK_字符设置“VK_F10”或“F10”");
+        log.error("");
+        log.error("请在JS脚本自定义配置中配置暂停键");
+        log.error("暂停键需与”BetterGI-快捷键-暂停当前脚本“的快捷键相同");
+        log.error("例如快捷键设置F10，暂停键VK_字符设置“VK_F10”或“F10”");
+        log.error("");
+        await sleep(10000);
+        return;
+      }
       if (selectedProcess === "刷新剧情列表") {
         // 刷新操作：扫描所有process.json并更新设置
         await refreshProcessList();
         log.info("委托列表已刷新，请重新选择并运行");
       } else {
-        // 解析选中的委托路径
-        const pathParts = selectedProcess.split('-');
+        // 每次运行都会扫描一遍
+        await refreshProcessList();
 
-        // 确保至少有两个文件夹层级
-        if (pathParts.length < 2) {
-          throw new Error("无效的委托路径格式");
+        // 从设置文件中获取完整的 process.json 路径
+        const settingsContent = file.readTextSync("./settings.json");
+        const settingsArray = JSON.parse(settingsContent);
+        const processSelectorSettings = settingsArray.find(item => item.name === "process_selector");
+
+        if (!processSelectorSettings || !processSelectorSettings.process_paths) {
+          throw new Error("设置文件 process_selector 或 process_paths 未正确配置");
+        }
+        // 从process_paths对象中根据名称获取对应的路径
+        const process_path = processSelectorSettings.process_paths[selectedProcess];
+
+        if (!process_path) {
+          throw new Error(`未找到名称为 "${selectedProcess}" 的流程路径配置`);
         }
 
-        // 提取最后两个文件夹名
-        const folder1 = pathParts[pathParts.length - 2];
-        const folder2 = pathParts[pathParts.length - 1];
-
-        // 设置动态基础路径（倒数第二个文件夹之前的所有部分）
-        Datas.TALK_PROCESS_BASE_PATH = "process/" + pathParts.slice(0, pathParts.length - 2).join('/');
-
         log.info("执行任务: {path}", selectedProcess);
-        log.debug("基础路径: {basePath}", Datas.TALK_PROCESS_BASE_PATH);
-        log.debug("文件夹1: {folder1}, 文件夹2: {folder2}", folder1, folder2);
+        //log.info("文件位置: {path}", process_path);
+        relativePath = process_path.replace(/^process[\\/]/, '');
+        //log.info("位置: {path}", relativePath);
         log.info("启用自动剧情");
         dispatcher.AddTrigger(new RealtimeTimer("AutoSkip"));
         if (!settings.noSkip) {
@@ -2388,7 +2239,7 @@ const isInMainUI = () => {
           dispatcher.AddTrigger(new RealtimeTimer("AutoEat"));
         }
         await switchPartyIfNeeded(team);
-        await Execute.executeTalkCommission(folder1, folder2);
+        await Execute.executeTalkCommission(process_path);
         dispatcher.ClearAllTriggers();
       }
     } catch (error) {
@@ -2405,26 +2256,18 @@ async function refreshProcessList() {
   
   // 筛选并处理符合条件的process.json文件
   const processEntries = allFiles
-      .filter(file => file.fileName === "process.json")
+      .filter(file => file.fileName === "process.json" && file.fullPath !== "process/process.json")
       .map(file => {
           const pathSegments = file.folderPathArray;
           
           // 确保路径中有"process"部分
           const processIndex = pathSegments.indexOf("process");
-          if (processIndex === -1 || processIndex >= pathSegments.length - 2) {
+          if (processIndex === -1) {
               throw new Error(`无效的路径结构: ${file.fullPath}`);
           }
           
-          // 提取"process"之后的所有部分
-          const relativePath = pathSegments.slice(processIndex + 1);
-          
-          // 确保至少有两个文件夹层级
-          if (relativePath.length < 2) {
-              throw new Error(`路径层级不足: ${file.fullPath}`);
-          }
-          
-          // 创建选项名称（用连字符连接所有文件夹名）
-          const optionName = relativePath.join('-');
+          // 提取"process"之后的所有部分作为选项名称
+          const optionName = pathSegments.slice(processIndex + 1).join('-');
           
           return {
               name: optionName,
@@ -2436,12 +2279,12 @@ async function refreshProcessList() {
   const options = ["刷新剧情列表", ...processEntries.map(entry => entry.name)];
   
   // 更新settings.json
-  await updateSettingsFile(options);
+  await updateSettingsFile(options, processEntries);
   log.info("已更新{count}个委托选项", processEntries.length);
 }
 
 // 更新settings.json文件
-async function updateSettingsFile(options) {
+async function updateSettingsFile(options, processEntries) {
     const settingsPath = "./settings.json";
     let settingsArray;
     
@@ -2459,14 +2302,26 @@ async function updateSettingsFile(options) {
     if (selectorIndex !== -1) {
         settingsArray[selectorIndex].options = options;
         settingsArray[selectorIndex].default = "刷新剧情列表";
+        
+        // 更新每个选项对应的process.json路径
+        settingsArray[selectorIndex].process_paths = {};
+        for (const entry of processEntries) {
+            settingsArray[selectorIndex].process_paths[entry.name] = entry.path;
+        }
+
     } else {
         // 如果不存在则添加
+        const processPaths = {};
+        for (const entry of processEntries) {
+            processPaths[entry.name] = entry.path;
+        }
         settingsArray.push({
             "name": "process_selector",
             "type": "select",
             "label": "可执行剧情列表",
             "options": options,
-            "default": "刷新剧情列表"
+            "default": "刷新剧情列表",
+            "process_paths": processPaths
         });
     }
     

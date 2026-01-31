@@ -1,0 +1,35 @@
+使用方法：
+
+在manifest.json文件中的"library"中，指定模块文件与脚本目录的相对路径。比如："library": [  "src"]
+在对应位置下放入js文件，比如 src\Arithmetic.js
+在main.js中使用ES6 导入语法，比如 import * as Arithmetic from 'Arithmetic.js';
+正常调用即可。
+//manifest.json
+{
+  "manifest_version": 1,
+  "name": "test",
+  "version": "0.1",
+  "description": "",
+  "authors": [ ],
+
+  "library": [
+    "src"
+  ],
+
+  "settings_ui": "settings.json",
+  "main": "main.js",
+  "http_allowed_urls": []
+}
+//main.js
+import * as Arithmetic from 'Arithmetic.js';
+(async function () {
+    var count = Arithmetic.Add(3, 4)
+    log.info(`The sum of 3 and 4 is ${count}`)
+    await sleep(1000)
+})();
+
+//src/Arithmetic.js
+export function Add(a, b) {  
+    log.info(`Add函数被调用`)
+    return a + b;  
+}  

@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "自动地图追踪录制",
-  "version": "1.0",
+  "version": "1.1",
   "bgi_version": "0.45.0",
   "description": "自动地图追踪录制，每0.9秒从小地图获取一次当前坐标，按O结束录制",
   "tags": [
@@ -13,6 +13,9 @@
       "name": "星野",
       "link": "https://github.com/LX666-666"
     }
+  ],
+  "library": [
+    "lib"
   ],
   "settings_ui": "settings.json",
   "main": "main.js"

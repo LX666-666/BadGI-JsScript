@@ -7,6 +7,11 @@ const paimonMenuRo = RecognitionObject.TemplateMatch(
   genshin.width / 5.0
 );
 
+export function Add(a, b) {  
+    log.info(`Add函数被调用`)
+    return a + b;  
+}  
+
 const StoryRo = RecognitionObject.TemplateMatch(
   file.ReadImageMatSync("assets/RecognitionObject/disabled_ui.png"),
   265, 37, 60, 22
@@ -18,21 +23,21 @@ const ORo = RecognitionObject.TemplateMatch(
 );
 
 // 判断是否在主界面的函数
-function isInMainUI(){
+export function isInMainUI(){
   let captureRegion = captureGameRegion();
   let res = captureRegion.Find(paimonMenuRo);
   return !res.isEmpty();
 };
 
 // 判断是否在O界面的函数
-function isInOUI(){
+export function isInOUI(){
   let captureRegion = captureGameRegion();
   let res = captureRegion.Find(ORo);
   return !res.isEmpty();
 };
 
 // 判断是否在Story界面的函数
-function isInStoryUI(){
+export function isInStoryUI(){
   let captureRegion = captureGameRegion();
   let res = captureRegion.Find(StoryRo);
   return !res.isEmpty();
@@ -53,7 +58,7 @@ async function recognizeImage(recognitionObject) {
 }
 
 // 定义移动状态常量
-const MOVE_STATE = {
+export const MOVE_STATE = {
   NORMAL: "normal",
   FLY: "fly",
   CLIMB: "climb",
@@ -67,7 +72,7 @@ const SwimRo = RecognitionObject.TemplateMatch(file.ReadImageMatSync("assets/Rec
 const ClimbRo = RecognitionObject.TemplateMatch(file.ReadImageMatSync("assets/RecognitionObject/Climb.png"), 1596, 1027, 29, 24);
 
 // 检测运动状态
-async function checkAbnormalState() {
+export async function checkAbnormalState() {
   const spaceResult = await recognizeImage(SpaceRo);
   const swimResult = await recognizeImage(SwimRo);
   const climbResult = await recognizeImage(ClimbRo);

@@ -23,20 +23,22 @@ const MAP_TYPES = {
   "远古圣山": "AncientSacredMountain"
 };
 
-const questName = settings.questName;
-const questLocation = settings.questLocation;
-const trackNumber = settings.trackNumber;
-const runMode = settings.runMode;
+const questName = settings.questName || "默认";
+const questLocation = settings.questLocation || "默认";
+const trackNumber = settings.trackNumber || 1;
+const runMode = settings.runMode || "录制模式";
 const startType = settings.start || "传送点";
+const settingmapType = settings.mapType || "自动检测";
+const strategyScript = "w(5)";
 
 let continueRecording = true;
 let lastposition;
-let currentMapType = null;
+let currentMapType = MAP_TYPES.settingmapType;
 
 // 初始化追踪数据
 var trackData = {
   "info": {
-    "name": `${settings.questName}-${settings.trackNumber}`,
+    "name": `${questName}-${trackNumber}`,
     "type": "collect",
     "author": settings.author,
     "version": settings.version,
@@ -49,7 +51,7 @@ var trackData = {
 
 // 保存追踪数据
 async function saveTrackData() {
-  const filePath = `Pathing/${settings.questLocation}/${settings.questName}-${settings.trackNumber}.json`;
+  const filePath = `Pathing/${questLocation}/${questName}-${trackNumber}.json`;
 
   try {
     await file.writeTextSync(filePath, JSON.stringify(trackData, null, 2));
@@ -153,8 +155,8 @@ async function handleStoryInterface() {
 // 主逻辑
 async function main() {
 
-  if (settings.runMode === "运行模式") {
-    const filePath = `Pathing/${settings.questLocation}/${settings.questName}-${settings.trackNumber}.json`;
+  if (runMode === "运行模式") {
+    const filePath = `Pathing/${questLocation}/${questName}-${trackNumber}.json`;
     log.info(`正在运行地图追踪任务文件: ${filePath}`);
     await pathingScript.runFile(filePath);
     return;
@@ -170,7 +172,7 @@ async function main() {
   log.info(`起始点类型: ${startType}`);
   const initialPointType = startType === "传送点" ? "teleport" : "path";
   if (isInMainUI()) {
-    const { position, map } = await getPlayerPosition();
+    const { position, map } = await getPlayerPosition(currentMapType);
     if (position) {
         lastposition = { x: position.X, y: position.Y };
         if (map) {

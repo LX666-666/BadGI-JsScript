@@ -7,11 +7,6 @@ const paimonMenuRo = RecognitionObject.TemplateMatch(
   genshin.width / 5.0
 );
 
-export function Add(a, b) {  
-    log.info(`Add函数被调用`)
-    return a + b;  
-}  
-
 const StoryRo = RecognitionObject.TemplateMatch(
   file.ReadImageMatSync("assets/RecognitionObject/disabled_ui.png"),
   265, 37, 60, 22

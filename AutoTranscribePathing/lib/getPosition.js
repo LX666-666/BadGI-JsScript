@@ -1,22 +1,23 @@
-let cachedMapType = null;
-
 const ALL_MAP_TYPES = [
   "Teyvat",
   "TheChasm",
   "Enkanomiya",
   "SeaOfBygoneEras",
-  "AncientSacredMountain"
+  "AncientSacredMountain",
+  "TempleOfSpace"
 ];
 
 async function findCorrectMapType() {
     for (const map of ALL_MAP_TYPES) {
         try {
             const pos = await genshin.getPositionFromMap(map);
+            log.info('在地图 {map} 上获取坐标: {pos.X}, {pos.Y}',map,pos.X,pos.Y);
             if (pos && pos.X !== 0 && pos.Y !== 0) {
                 log.info(`自动检测到当前地图为: ${map}`);
                 return map;
             }
         } catch (e) {
+            log.warn(`在地图 ${map} 上获取坐标失败: ${e}`);
             // 忽略错误，继续尝试下一个
         }
     }
@@ -24,8 +25,9 @@ async function findCorrectMapType() {
     return null;
 }
 
-export async function getPlayerPosition(lastPosition) {
+export async function getPlayerPosition(lastPosition,cachedMapType) {
     if (lastPosition) {
+        //log.info(`使用上次的位置进行局部匹配: ${lastPosition.x}, ${lastPosition.y}`);
         // 优先使用缓存的地图类型进行局部匹配
         if (cachedMapType) {
             try {

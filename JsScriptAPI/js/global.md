@@ -1,0 +1,155 @@
+---
+title: 全局方法
+order: 20
+---
+
+## 全局方法
+
+举例：
+```js
+// 向前走2s
+keyDown("w");
+await sleep(2000);
+keyUp("w");
+```
+
+### sleep(int millisecondsTimeout)
+- 返回类型: `Task`
+- 描述: 使当前任务休眠指定的毫秒数
+- 参数:
+  - `millisecondsTimeout` (`int`): 休眠时间，单位为毫秒
+
+### getVersion()
+- 返回类型: `string`
+- 描述: 获取当前使用的bgi版本号（0.55.1新增）
+
+### keyDown(string key)
+- 描述: 按下指定的键
+- 参数:
+  - `key` (`string`): 要按下的键，具体可用参数见 [虚拟键代码表](/feats/append/keycodes.html)
+
+### keyUp(string key)
+- 描述: 释放指定的键
+- 参数:
+  - `key` (`string`): 要释放的键，具体可用参数见 [虚拟键代码表](/feats/append/keycodes.html)
+
+### keyPress(string key)
+- 描述: 按下并释放指定的键
+- 参数:
+  - `key` (`string`): 要按下并释放的键，具体可用参数见 [虚拟键代码表](/feats/append/keycodes.html)
+
+### setGameMetrics(int width, int height, double dpi = 1)
+- 描述: 设置你编写脚本环境的游戏分辨率和DPI缩放，在其他电脑上运行时，程序会自动适配。**游戏分辨率影响鼠标的绝对位置，也就是 `moveMouseTo` 方法，屏幕缩放影响鼠标的相对移动，也就是 `moveMouseBy` 方法。鼠标dpi大小不影响任何操作**
+- 参数:
+  - `width` (`int`): 游戏宽度
+  - `height` (`int`): 游戏高度
+  - `dpi` (`double`): DPI缩放比例，默认为1，假如你的显示器设置是150%缩放，那这个值就是1.5
+
+### getGameMetrics()
+- 描述: 获取脚本环境的游戏分辨率和DPI缩放
+- 返回类型：`number[]`
+- 示例：
+```js
+	const [width, height, dpi] = getGameMetrics();
+```
+
+### moveMouseBy(int x, int y)
+- 描述: 移动鼠标相对于当前位置的偏移量
+- 参数:
+  - `x` (`int`): 水平偏移量
+  - `y` (`int`): 垂直偏移量
+
+### moveMouseTo(int x, int y)
+- 描述: 移动鼠标到指定位置
+- 参数:
+  - `x` (`int`): 目标位置的X坐标
+  - `y` (`int`): 目标位置的Y坐标
+
+### click(int x, int y)
+- 描述: 在指定位置点击鼠标左键
+- 参数:
+  - `x` (`int`): 目标位置的X坐标
+  - `y` (`int`): 目标位置的Y坐标
+
+### leftButtonClick()
+- 描述: 点击鼠标左键
+
+### leftButtonDown()
+- 描述: 按下鼠标左键
+
+### leftButtonUp()
+- 描述: 释放鼠标左键
+
+### rightButtonClick()
+- 描述: 点击鼠标右键
+
+### rightButtonDown()
+- 描述: 按下鼠标右键
+
+### rightButtonUp()
+- 描述: 释放鼠标右键
+
+### middleButtonClick()
+- 描述: 点击鼠标中键
+
+### middleButtonDown()
+- 描述: 按下鼠标中键
+
+### middleButtonUp()
+- 描述: 释放鼠标中键
+
+### verticalScroll(int scrollAmountInClicks)
+- 描述: 垂直滚动鼠标滚轮
+- 参数:
+  - `scrollAmountInClicks` (`int`): 滚动量，正数向上滚动，负数向下滚动
+
+### captureGameRegion()
+- 返回类型: `ImageRegion`
+- 描述: 捕获游戏区域的图像，用于图像识别。当游戏分辨率大于 1080P 时，返回的图像会自动缩放至 1920x1080；小于等于 1080P 时保持原始尺寸。具体见 [图像识别与OCR](/dev/js/rec.html)
+
+
+### inputText(string text)
+- 描述: 输入文本
+- 参数:
+  - `text` (`string`): 文本
+
+### inputText(string text)
+- 描述：在输入框输入文本，需要确保输入框处于激活状态
+
+### getAvatars()
+- 返回类型：`string[]`
+- 通过图像识别获取当前队伍角色，需要确保调用函数时位于主界面，并且是四人满编队伍。0.47.3 存在
+- 示例：
+```js
+	const avatars = getAvatars();
+	for (let i=0; i<avatars.length; i++){
+		log.info(`第 ${i+1} 个角色为 ${avatars[i]}`);
+	}
+```
+
+## 类型提示
+
+当开发脚本没有代码提示时，可以下载 [bettergi.d.ts](https://github.com/babalae/bettergi-scripts-list/blob/main/bettergi.d.ts) 到自己的JS文件夹根目录下。
+
+如果是 `Jetbrains` 的编辑器，它会自动识别根目录的 `bettergi.d.ts` 并进行代码提示，而 `vscode` 需要进行相关配置。
+
+### 通用方法
+
+如果编辑器无法自动识别，那么可以在 `main.js` 顶部添加：`/// <reference path="bettergi.d.ts" />`
+
+如下样例：
+```js
+/// <reference path="bettergi.d.ts" />
+
+(async function () {
+  // 所有的代码必须由 async function 包裹
+})();
+```
+
+以上配置能解决大部分编辑器没有提示的问题。
+
+::: warning
+
+脚本提交到中央仓库前请删除相关配置。
+
+:::

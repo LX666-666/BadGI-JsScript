@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Microsoft YaHei', sans-serif;
+      color: #fff;
+    }
+    .panel {
+      width: 480px;
+      background: #111;
+      border: 2px solid #ffcc00;
+      padding: 24px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+    }
+    .title {
+      font-size: 18px;
+      color: #ffcc00;
+      margin-bottom: 16px;
+      font-weight: bold;
+    }
+    .content {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #eee;
+      margin-bottom: 24px;
+    }
+    .content .ok {
+      color: #7ee787;
+    }
+    .content .warn {
+      color: #ff7b72;
+    }
+    .btn {
+      width: 100%;
+      padding: 10px 0;
+      background: #ffcc00;
+      color: #000;
+      border: none;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #ffe066;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="title">剧情自动保存提示</div>
+    <div class="content">
+      <p>检测到进入剧情，路径已自动保存。</p>
+      <p class="ok">✓ 如果你是走过去后黑屏直接进入剧情，自动保存是正常流程。</p>
+      <p class="warn">✗ 如果你是走过去后出现对话框并按 F 进入的剧情，则操作有误。</p>
+      <p>正确做法：先手动保存路径，再触发剧情。</p>
+    </div>
+    <button class="btn" id="okBtn">知道了</button>
+  </div>
+
+  <script>
+    document.getElementById('okBtn').addEventListener('click', async function() {
+      try {
+        await window.htmlMask.request('/story-tip/close', {});
+      } catch (e) {
+        console.log('关闭弹窗请求失败', e);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
-//版本：1.0
-//编译日期：2026-02-01
+//版本：1.1
+//编译日期：2026-07-12
 
 // 计算两点之间的距离
 export function distance(a, b) {
@@ -52,7 +52,10 @@ function rdp(points, epsilon) {
 export async function processTrackData(trackData, MOVE_STATE, MOVE_MODES) {
     log.info("开始处理路径数据...");
     
-    // 1. 先优化点，保留关键点（飞/游起止点；攀爬仅保留起止点）
+    // 0. 先扩展攀爬段前后缓冲，避免提前结束攀爬导致卡死
+    extendClimbSegments(trackData, MOVE_STATE, MOVE_MODES);
+    
+    // 1. 优化点，保留关键点（飞/游起止点；攀爬仅保留起止点，强制保留 optimize=false 的点）
     optimizePathPoints(trackData, MOVE_STATE);
     
     // 2. 再分配移动模式与动作（飞/攀/游/正常）
@@ -66,6 +69,59 @@ export async function processTrackData(trackData, MOVE_STATE, MOVE_MODES) {
     }
     
     log.info("路径数据处理完成");
+}
+
+// 扩展攀爬段前后缓冲距离，并把扩展点标记为不可优化
+function extendClimbSegments(trackData, MOVE_STATE, MOVE_MODES) {
+    const positions = trackData.positions;
+    if (!positions || positions.length === 0) return;
+
+    const CLIMB_EXTENSION = 20; // 前后各扩展20单位
+
+    let i = 0;
+    while (i < positions.length) {
+        if (positions[i].state !== MOVE_STATE.CLIMB) {
+            i++;
+            continue;
+        }
+
+        // 找到连续攀爬段
+        let climbStart = i;
+        let climbEnd = i;
+        while (climbEnd + 1 < positions.length && positions[climbEnd + 1].state === MOVE_STATE.CLIMB) {
+            climbEnd++;
+        }
+
+        // 向后扩展：把攀爬结束后20单位内的连续点标记为CLIMB并不可优化
+        let extensionIndex = climbEnd + 1;
+        let extensionDist = 0;
+        while (extensionIndex < positions.length) {
+            extensionDist += distance(positions[extensionIndex - 1], positions[extensionIndex]);
+            if (extensionDist <= CLIMB_EXTENSION) {
+                positions[extensionIndex].state = MOVE_STATE.CLIMB;
+                positions[extensionIndex].optimize = false;
+                extensionIndex++;
+            } else {
+                break;
+            }
+        }
+
+        // 向前扩展：把攀爬起点前20单位内的连续点改为walk并不可优化
+        let backIndex = climbStart - 1;
+        let backDist = 0;
+        while (backIndex >= 0) {
+            backDist += distance(positions[backIndex], positions[backIndex + 1]);
+            if (backDist <= CLIMB_EXTENSION) {
+                positions[backIndex].move_mode = MOVE_MODES.WALK;
+                positions[backIndex].optimize = false;
+                backIndex--;
+            } else {
+                break;
+            }
+        }
+
+        i = climbEnd + 1;
+    }
 }
   
 // 处理移动模式
@@ -109,32 +165,18 @@ function processMoveModes(trackData, MOVE_STATE, MOVE_MODES) {
         continue;
       }
   
-      // 攀爬段：从 CLIMB 开始，直到非 CLIMB 结束；<10s 设 jump，否则设 climb，并回溯10单位将 dash 改为 walk
+      // 攀爬段：从 CLIMB 开始，直到非 CLIMB 结束；<10s 设 jump，否则设 climb，并回溯20单位将 dash 改为 walk
       if (currentState === MOVE_STATE.CLIMB) {
         let end = i;
         while (end + 1 < positions.length && positions[end + 1].state === MOVE_STATE.CLIMB) end++;
         const climbStart = i;
-        const originalEndPos = positions[end];
-  
-        // CLIMB 副作用小，可以弥补精度问题
-        let climbEnd = end;
-        let extensionIndex = climbEnd + 1;
-        // 将最后一个 CLIMB 点之后1 0 单位距离内的连续点都标记为 CLIMB
-        while (extensionIndex < positions.length) {
-          const dist = distance(originalEndPos, positions[extensionIndex]);
-          if (dist <= 10) {
-            positions[extensionIndex].state = MOVE_STATE.CLIMB;
-            climbEnd = extensionIndex;
-            extensionIndex++;
-          } else {
-            break;
-          }
-        }
+        const climbEnd = end;
   
         const climbDurationSeconds = (positions[climbEnd].timestamp - positions[climbStart].timestamp) / 1000;
         const climbMode = climbDurationSeconds < 10 ? MOVE_MODES.JUMP : MOVE_MODES.CLIMB;
         for (let k = climbStart; k <= climbEnd; k++) positions[k].move_mode = climbMode;
   
+        // 回溯 20 单位，将 dash 改为 swim（仅当为长攀爬时,因为游泳全程不冲刺）
         if (climbMode === MOVE_MODES.CLIMB) {
           let backDistAccum = 0;
           for (let j = climbStart - 1; j >= 0; j--) {
@@ -143,9 +185,9 @@ function processMoveModes(trackData, MOVE_STATE, MOVE_MODES) {
               { x: positions[j].x, y: positions[j].y }
             );
             backDistAccum += segDist;
-            if (backDistAccum >= 10) break;
+            if (backDistAccum >= 20) break;
             if (positions[j].move_mode === MOVE_MODES.DASH) {
-              positions[j].move_mode = MOVE_MODES.WALK;
+              positions[j].move_mode = MOVE_MODES.SWIM;
             }
           }
         }
@@ -181,7 +223,7 @@ function optimizePathPoints(trackData, MOVE_STATE) {
         y: p.y,
         state: p.state
       }));
-      const epsilon = 2.0; 
+      const epsilon = 1.0; 
       
       const pointsForRdp = originalPoints.map(p => ({ x: p.x, y: p.y }));
       const simplifiedPoints = rdp(pointsForRdp, epsilon);
@@ -217,6 +259,13 @@ function optimizePathPoints(trackData, MOVE_STATE) {
         }
       }
   
+      // 强制保留被标记为不可优化的点（剧情点、攀爬扩展缓冲点）
+      for (let idx = 0; idx < trackData.positions.length; idx++) {
+        if (trackData.positions[idx].optimize === false && !keptIndices.includes(idx)) {
+          keptIndices.push(idx);
+        }
+      }
+
       keptIndices = Array.from(new Set(keptIndices)).sort((a, b) => a - b);
       
       const newPositions = keptIndices.map(idx => {

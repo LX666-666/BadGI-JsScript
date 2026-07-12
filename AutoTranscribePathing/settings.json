@@ -21,7 +21,8 @@
       "层岩巨渊",
       "渊下宫",
       "旧日之海",
-      "远古圣山"
+      "远古圣山",
+      "空之神殿"
     ],
     "default": "自动检测"
   },
@@ -68,5 +69,12 @@
     "type": "input-text",
     "label": "版本",
     "default": "1.0"
+  },
+  {
+    "name": "testMode",
+    "type": "checkbox",
+    "label": "调试模式（会输出详细日志）",
+    "default": false
   }
+
 ]

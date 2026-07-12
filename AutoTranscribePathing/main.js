@@ -20,7 +20,8 @@ const MAP_TYPES = {
   "层岩巨渊": "TheChasm",
   "渊下宫": "Enkanomiya",
   "旧日之海": "SeaOfBygoneEras",
-  "远古圣山": "AncientSacredMountain"
+  "远古圣山": "AncientSacredMountain",
+  "空之神殿": "TempleOfSpace"
 };
 
 const questName = settings.questName || "默认";
@@ -28,12 +29,15 @@ const questLocation = settings.questLocation || "默认";
 const trackNumber = settings.trackNumber || 1;
 const runMode = settings.runMode || "录制模式";
 const startType = settings.start || "传送点";
-const settingmapType = settings.mapType || "自动检测";
+const mapType = settings.mapType || "自动检测";
 const strategyScript = "w(5)";
+const testMode = settings.testMode || false;
 
 let continueRecording = true;
+let needStoryTip = false;
+let storyTipWinId = null;
 let lastposition;
-let currentMapType = MAP_TYPES.settingmapType;
+let currentMapType = MAP_TYPES[mapType] || null;
 
 // 初始化追踪数据
 var trackData = {
@@ -44,7 +48,7 @@ var trackData = {
     "version": settings.version,
     "description": settings.description,
     "map_name": "Teyvat", // 初始值，后续会更新
-    "bgi_version": "0.47.2"
+    "bgi_version": "0.47.3"
   },
   "positions": []
 };
@@ -67,7 +71,7 @@ async function recordPosition() {
   if (isInMainUI()) {
     try {
       const currentState = await checkAbnormalState();
-      const { position, map } = await getPlayerPosition(lastposition);
+      const { position, map } = await getPlayerPosition(lastposition,currentMapType);
 
       if (!position || (position.X === 0 && position.Y === 0)){
         log.warn("取到坐标失败");
@@ -79,8 +83,10 @@ async function recordPosition() {
           trackData.info.map_name = map; // 更新地图名称
       }
 
+      //log.info(`地图类型: ${currentMapType}`);
+
       if (lastposition && Opt.distance({x: position.X, y: position.Y}, lastposition) < 1) {
-        log.debug("位置未变化，跳过");
+        if(testMode) log.debug("位置未变化，跳过");
         return;
       }
       if (lastposition && Opt.distance({x: position.X, y: position.Y}, lastposition) > 100) {
@@ -110,7 +116,7 @@ async function recordPosition() {
   } else {
     if(isInOUI()){
       await genshin.returnMainUi();
-      const { position } = await getPlayerPosition(lastposition);
+      const { position } = await getPlayerPosition(lastposition,currentMapType);
       if (position) {
         trackData.positions.push({
           "id": trackData.positions.length + 1,
@@ -129,7 +135,7 @@ async function recordPosition() {
     }
     if(isInStoryUI())
     {
-      handleStoryInterface();
+      await handleStoryInterface();
       continueRecording = false;
     }
   }
@@ -139,7 +145,7 @@ async function recordPosition() {
 // 处理剧情界面（录制中进入剧情）
 async function handleStoryInterface() {
   log.info("检测到剧情界面，处理特殊逻辑...");
-  
+
   if (trackData.positions.length > 0) {
     // 立即停止当前路径录制
     // 在当前地图追踪文件的最后一个路径点添加combat_script动作
@@ -148,8 +154,9 @@ async function handleStoryInterface() {
     trackData.positions[trackData.positions.length - 1].action_params = strategyScript;
     trackData.positions[trackData.positions.length - 1].optimize = false; // 标记为不可优化
   }
+
+  needStoryTip = true;
   
-  log.info("剧情界面处理完成");
 }
 
 // 主逻辑
@@ -170,16 +177,18 @@ async function main() {
   await genshin.returnMainUi();
   
   log.info(`起始点类型: ${startType}`);
+  log.info(`设置地图类型: ${mapType}`);
+
   const initialPointType = startType === "传送点" ? "teleport" : "path";
   if (isInMainUI()) {
-    const { position, map } = await getPlayerPosition(currentMapType);
+    const { position, map } = await getPlayerPosition();
     if (position) {
         lastposition = { x: position.X, y: position.Y };
         if (map) {
             currentMapType = map;
             trackData.info.map_name = map;
         }
-        log.debug(`从小地图获取坐标: X=${position.X}, Y=${position.Y}`);
+        if(testMode) log.debug(`从小地图获取坐标: X=${position.X}, Y=${position.Y}`);
 
         // 记录初始状态
         const initialState = await checkAbnormalState();
@@ -202,15 +211,39 @@ async function main() {
     log.info("不在主界面，请返回主界面后重新启动脚本");
     return;
   }
-  await sleep(900);
+  await sleep(200);
   while (continueRecording) {
     await recordPosition();
-    await sleep(900); // 每0.9秒录制一次
+    await sleep(200); // 每0.2秒录制一次
   }
   await Opt.processTrackData(trackData, MOVE_STATE, MOVE_MODES); // 处理收集到的路径数据
   await saveTrackData();
-  
+
+  if (needStoryTip) {
+    storyTipWinId = htmlMask.show("assets/story-tip.html", "story-tip");
+    htmlMask.setClickThrough(storyTipWinId, false);
+    log.info("已弹出剧情自动保存提示");
+
+    while (htmlMask.exists(storyTipWinId)) {
+      const msg = await htmlMask.receive(storyTipWinId, 1000);
+      if (!msg) {
+        continue;
+      }
+      try {
+        const data = JSON.parse(msg);
+        if (data.url === "/story-tip/close") {
+          break;
+        }
+      } catch (e) {
+        log.warn("收到无效消息:" + msg);
+      }
+    }
+
+    htmlMask.close(storyTipWinId);
+  }
+
   log.info("地图追踪录制结束");
+
 }
 
 main();

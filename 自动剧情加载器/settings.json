@@ -5,11 +5,13 @@
     "label": "可执行剧情列表",
     "options": [
       "刷新剧情列表",
-      "ciallo"
+      "新指令测试",
+      "映夏！归乡？千灵节！第二幕"
     ],
     "default": "刷新剧情列表",
     "process_paths": {
-      "ciallo": "process\\ciallo\\process.json"
+      "新指令测试": "process\\新指令测试\\process.json",
+      "映夏！归乡？千灵节！第二幕": "process\\映夏！归乡？千灵节！第二幕\\process.json"
     }
   },
   {

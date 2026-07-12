@@ -1,0 +1,108 @@
+{
+  "info": {
+    "author": "",
+    "authors": [],
+    "bgi_version": "0.47.3",
+    "description": "",
+    "enable_monster_loot_split": false,
+    "last_modified_time": 1783861388347,
+    "map_match_method": "",
+    "map_name": "Teyvat",
+    "name": "那些我们所失去的-1",
+    "tags": [],
+    "type": "collect",
+    "version": "1.0"
+  },
+  "positions": [
+    {
+      "action": "",
+      "action_params": "",
+      "id": 1,
+      "move_mode": "walk",
+      "type": "teleport",
+      "x": 4744.6377,
+      "y": 2638.8169
+    },
+    {
+      "action": "",
+      "action_params": "",
+      "id": 2,
+      "move_mode": "dash",
+      "type": "path",
+      "x": 4731.1855,
+      "y": 2645.7319
+    },
+    {
+      "action": "",
+      "action_params": "",
+      "id": 3,
+      "move_mode": "dash",
+      "type": "path",
+      "x": 4727.8906,
+      "y": 2649.8994
+    },
+    {
+      "action": "",
+      "action_params": "",
+      "id": 4,
+      "move_mode": "dash",
+      "type": "path",
+      "x": 4702.5615,
+      "y": 2665.9229
+    },
+    {
+      "action": "",
+      "action_params": "",
+      "id": 5,
+      "move_mode": "dash",
+      "type": "path",
+      "x": 4663.5889,
+      "y": 2685.6563
+    },
+    {
+      "action": "",
+      "action_params": "",
+      "id": 6,
+      "move_mode": "dash",
+      "type": "path",
+      "x": 4660.0273,
+      "y": 2685.3755
+    },
+    {
+      "action": "",
+      "action_params": "",
+      "id": 7,
+      "move_mode": "dash",
+      "type": "path",
+      "x": 4658.8906,
+      "y": 2687.0376
+    },
+    {
+      "action": "",
+      "action_params": "",
+      "id": 8,
+      "move_mode": "dash",
+      "type": "path",
+      "x": 4656.8887,
+      "y": 2685.7979
+    },
+    {
+      "action": "",
+      "action_params": "",
+      "id": 9,
+      "move_mode": "dash",
+      "type": "path",
+      "x": 4650.7236,
+      "y": 2688.3691
+    },
+    {
+      "action": "",
+      "action_params": "",
+      "id": 10,
+      "move_mode": "walk",
+      "type": "path",
+      "x": 4636.8916,
+      "y": 2688.8728
+    }
+  ]
+}

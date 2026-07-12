@@ -1,7 +1,7 @@
 (async function () {
   // 版本和编译信息
-  const VERSION = "1.45";
-  const BUILD_TIME = "2026.04.10";
+  const VERSION = "1.46";
+  const BUILD_TIME = "2026.07.12";
 
   // 读取设置
   const team = settings.team || "";
@@ -1320,6 +1320,24 @@ processKeyPress: async (step) => {
           case "切换":
             pushInstr("切换", arg);
             break;
+          case "点击":
+            pushInstr("点击", arg);
+            break;
+          case "切换队伍":
+            pushInstr("切换队伍", arg);
+            break;
+          case "图像匹配":
+            pushInstr("图像匹配", arg);
+            break;
+          case "切换角色体型":
+            pushInstr("切换角色体型", arg);
+            break;
+          case "点击文字":
+            pushInstr("点击文字", arg);
+            break;
+          case "返回主界面":
+            pushInstr("返回主界面", null);
+            break;
           default: {
             // 兼容旧格式：F xxx => 对话 xxx
             if (/^F$/i.test(cmd) && arg) {
@@ -1555,6 +1573,168 @@ processKeyPress: async (step) => {
             await sleep(500);
             break;
           }
+          case "点击": {
+            const parts = String(data).split(/[,，]/);
+            const cx = parseInt(parts[0], 10);
+            const cy = parseInt(parts[1], 10);
+            if (!isNaN(cx) && !isNaN(cy)) {
+              log.info("点击坐标: ({x}, {y})", cx, cy);
+              click(cx, cy);
+              await sleep(300);
+            } else {
+              log.warn("点击指令格式错误，应为：点击 x,y，实际：{data}", data);
+            }
+            break;
+          }
+          case "切换队伍": {
+            const teamArgs = String(data).trim().split(/\s+/);
+            const teamType = teamArgs[0] || "战斗";
+            const needStatue = teamArgs[1] === "是";
+            const partyName = teamType === "元素采集" ? elementTeam : team;
+            if (!partyName) {
+              log.warn("未配置{teamType}队伍名称", teamType);
+              break;
+            }
+            if (needStatue) {
+              log.info("前往神像切换队伍: {partyName}", partyName);
+              await genshin.tpToStatueOfTheSeven();
+            }
+            await switchPartyIfNeeded(partyName);
+            break;
+          }
+          case "图像匹配": {
+            const imagePath = String(data);
+            const dir = process_path.replace(/[^\\/]+$/, "");
+            const fullPath = dir + imagePath;
+            log.info("图像匹配: {path}", fullPath);
+            try {
+              const template = file.ReadImageMatSync(fullPath);
+              const screen = captureGameRegion();
+              try {
+                const ro = RecognitionObject.templateMatch(template, 0, 0, 1920, 1080);
+                ro.Threshold = 0.8;
+                const found = screen.find(ro);
+                if (!found.isEmpty()) {
+                  found.click();
+                  log.info("图像匹配成功，已点击");
+                  await sleep(300);
+                } else {
+                  log.warn("图像匹配未找到: {path}", fullPath);
+                }
+              } finally {
+                screen.dispose();
+                template.dispose();
+              }
+            } catch (e) {
+              log.error("图像匹配失败: {e}", e);
+            }
+            break;
+          }
+          case "切换角色体型": {
+            const targetBodyType = String(data);
+            log.info("切换角色体型: {bodyType}", targetBodyType);
+            try {
+              const currentTeam = Array.from(getAvatars() || []);
+              if (currentTeam.length === 0) {
+                log.warn("无法识别当前队伍");
+                break;
+              }
+              let avatarData;
+              try {
+                avatarData = JSON.parse(file.readTextSync("Data/avatar/combat_avatar.json"));
+              } catch {
+                log.warn("未找到角色数据文件 Data/avatar/combat_avatar.json");
+                break;
+              }
+              const getBodyType = (charName) => {
+                for (const entry of avatarData) {
+                  if (entry.name === charName || (entry.alias && entry.alias.includes(charName))) {
+                    return entry.bodyType;
+                  }
+                }
+                return null;
+              };
+              let targetIndex = -1;
+              for (let i = 0; i < currentTeam.length; i++) {
+                const bt = getBodyType(currentTeam[i]);
+                if (bt === targetBodyType) {
+                  targetIndex = i;
+                  break;
+                }
+              }
+              if (targetIndex === -1) {
+                log.warn("队伍中没有体型为{bodyType}的角色", targetBodyType);
+                break;
+              }/*
+              if (targetIndex === 0) {
+                log.info("当前出战角色已是{bodyType}体型: {name}", targetBodyType, currentTeam[0]);
+                break;
+              }*/ //这段不知道能不能跑起来
+              const slotKey = ["1", "2", "3", "4"][targetIndex];
+              log.info("切换到第{idx}号位: {name}", targetIndex + 1, currentTeam[targetIndex]);
+              keyPress(slotKey);
+              await sleep(200);
+              keyPress(slotKey);
+              await sleep(200);
+              keyPress(slotKey);
+              await sleep(5000);
+            } catch (e) {
+              log.error("切换角色体型失败: {e}", e);
+            }
+            break;
+          }
+          case "点击文字": {
+            // 格式：点击文字 x,y,w,h,文字
+            const ocrParts = String(data).split(/[,，]/);
+            if (ocrParts.length < 5) {
+              log.warn("点击文字指令格式错误，应为：点击文字 x,y,w,h,文字，实际：{data}", data);
+              break;
+            }
+            const ox = parseInt(ocrParts[0], 10);
+            const oy = parseInt(ocrParts[1], 10);
+            const ow = parseInt(ocrParts[2], 10);
+            const oh = parseInt(ocrParts[3], 10);
+            const targetText = ocrParts.slice(4).join(",");
+            if (isNaN(ox) || isNaN(oy) || isNaN(ow) || isNaN(oh)) {
+              log.warn("点击文字坐标无效: {data}", data);
+              break;
+            }
+            log.info("点击文字: 区域({x},{y},{w},{h}) 目标文字: {text}", ox, oy, ow, oh, targetText);
+            try {
+              const screen = captureGameRegion();
+              try {
+                const ro = RecognitionObject.ocr(ox, oy, ow, oh);
+                const regions = screen.findMulti(ro);
+                let bestMatch = null;
+                let bestSim = 0;
+                for (let i = 0; i < regions.Count; i++) {
+                  const txt = Utils.normalizeText(regions[i].Text);
+                  const sim = Utils.similarity(txt, Utils.normalizeText(targetText));
+                  if (sim > bestSim) {
+                    bestSim = sim;
+                    bestMatch = regions[i];
+                  }
+                }
+                if (bestMatch && bestSim >= 0.6) {
+                  bestMatch.click();
+                  log.info("点击文字成功，相似度: {sim}", bestSim.toFixed(2));
+                  await sleep(300);
+                } else {
+                  log.warn("点击文字未找到匹配: 目标={text}，最高相似度={sim}", targetText, bestSim.toFixed(2));
+                }
+              } finally {
+                screen.dispose();
+              }
+            } catch (e) {
+              log.error("点击文字失败: {e}", e);
+            }
+            break;
+          }
+          case "返回主界面":
+            log.info("执行返回主界面");
+            await genshin.returnMainUi();
+            await sleep(500);
+            break;
           default:
             log.warn("未实现的指令类型: {type}", type);
         }

@@ -1,3 +1,5 @@
+import { chooseProcess } from 'picker.js';
+
 (async function () {
   // 版本和编译信息
   const VERSION = "1.46";
@@ -6,7 +8,6 @@
   // 读取设置
   const team = settings.team || "";
   const elementTeam = settings.elementTeam || "";
-  const selectedProcess = settings.process_selector || "刷新剧情列表";
   let relativePath;
   async function errorlog() {
     // 输出版本和编译时间信息
@@ -2518,169 +2519,34 @@ processKeyPress: async (step) => {
         await sleep(10000);
         return;
       }
-      if (selectedProcess === "刷新剧情列表") {
-        // 刷新操作：扫描所有process.json并更新设置
-        await refreshProcessList();
-        log.info("委托列表已刷新，请重新选择并运行");
-      } else {
-        // 每次运行都会扫描一遍
-        await refreshProcessList();
-
-        // 从设置文件中获取完整的 process.json 路径
-        const settingsContent = file.readTextSync("./settings.json");
-        const settingsArray = JSON.parse(settingsContent);
-        const processSelectorSettings = settingsArray.find(item => item.name === "process_selector");
-
-        if (!processSelectorSettings || !processSelectorSettings.process_paths) {
-          throw new Error("设置文件 process_selector 或 process_paths 未正确配置");
-        }
-        // 从process_paths对象中根据名称获取对应的路径
-        const process_path = processSelectorSettings.process_paths[selectedProcess];
-
-        if (!process_path) {
-          throw new Error(`未找到名称为 "${selectedProcess}" 的流程路径配置`);
-        }
-
-        log.info("执行任务: {path}", selectedProcess);
-        //log.info("文件位置: {path}", process_path);
-        relativePath = process_path.replace(/^process[\\/]/, '');
-        //log.info("位置: {path}", relativePath);
-        log.info("启用自动剧情");
-        dispatcher.AddTrigger(new RealtimeTimer("AutoSkip"));
-        if (!settings.noSkip) {
-          log.info("启用自动拾取");
-          dispatcher.AddTrigger(new RealtimeTimer("AutoPick"));
-        }
-        if (!settings.noEat) {
-          log.info("启用自动吃药");
-          dispatcher.AddTrigger(new RealtimeTimer("AutoEat"));
-        }
-        await switchPartyIfNeeded(team);
-        await Execute.executeTalkCommission(process_path);
-        dispatcher.ClearAllTriggers();        
-        if(settings.xiaoxitongzhi) notification.error("脚本执行完成");
+      const picked = await chooseProcess();
+      if (!picked) {
+        log.info("未选择剧情，脚本结束");
+        return;
       }
+
+      log.info("执行任务: {path}", picked.name);
+      relativePath = picked.path.replace(/^process[\\/]/, "");
+      log.info("启用自动剧情");
+      dispatcher.AddTrigger(new RealtimeTimer("AutoSkip"));
+      if (!settings.noSkip) {
+        log.info("启用自动拾取");
+        dispatcher.AddTrigger(new RealtimeTimer("AutoPick"));
+      }
+      if (!settings.noEat) {
+        log.info("启用自动吃药");
+        dispatcher.AddTrigger(new RealtimeTimer("AutoEat"));
+      }
+      await switchPartyIfNeeded(team);
+      await Execute.executeTalkCommission(picked.path);
+      dispatcher.ClearAllTriggers();
+      if(settings.xiaoxitongzhi) notification.error("脚本执行完成");
     } catch (error) {
       log.error("执行出错: {error}", error.message);
       errorlog();
       if(settings.xiaoxitongzhi) notification.error("脚本执行出错: " + error.message);
     }
   };
-
-// 刷新委托列表（保留完整路径结构）
-async function refreshProcessList() {
-  // 读取所有process.json文件
-  const allFiles = await readFolder("process/", true);
-  
-  // 筛选并处理符合条件的process.json文件
-  const processEntries = allFiles
-      .filter(file => file.fileName === "process.json" && file.fullPath !== "process/process.json")
-      .map(file => {
-          const pathSegments = file.folderPathArray;
-          
-          // 确保路径中有"process"部分
-          const processIndex = pathSegments.indexOf("process");
-          if (processIndex === -1) {
-              throw new Error(`无效的路径结构: ${file.fullPath}`);
-          }
-          
-          // 提取"process"之后的所有部分作为选项名称
-          const optionName = pathSegments.slice(processIndex + 1).join('-');
-          
-          return {
-              name: optionName,
-              path: file.fullPath
-          };
-      });
-
-  // 创建选项列表（以"刷新剧情列表"开头）
-  const options = ["刷新剧情列表", ...processEntries.map(entry => entry.name)];
-  
-  // 更新settings.json
-  await updateSettingsFile(options, processEntries);
-  log.info("已更新{count}个委托选项", processEntries.length);
-}
-
-// 更新settings.json文件
-async function updateSettingsFile(options, processEntries) {
-    const settingsPath = "./settings.json";
-    let settingsArray;
-    
-    try {
-        // 读取现有设置
-        const content = file.readTextSync(settingsPath);
-        settingsArray = JSON.parse(content);
-    } catch (e) {
-        // 文件不存在或解析失败时创建默认设置
-        throw new Error("设置文件不存在");
-    }
-    
-    // 更新process_selector选项
-    const selectorIndex = settingsArray.findIndex(item => item.name === "process_selector");
-    if (selectorIndex !== -1) {
-        settingsArray[selectorIndex].options = options;
-        settingsArray[selectorIndex].default = "刷新剧情列表";
-        
-        // 更新每个选项对应的process.json路径
-        settingsArray[selectorIndex].process_paths = {};
-        for (const entry of processEntries) {
-            settingsArray[selectorIndex].process_paths[entry.name] = entry.path;
-        }
-
-    } else {
-        // 如果不存在则添加
-        const processPaths = {};
-        for (const entry of processEntries) {
-            processPaths[entry.name] = entry.path;
-        }
-        settingsArray.push({
-            "name": "process_selector",
-            "type": "select",
-            "label": "可执行剧情列表",
-            "options": options,
-            "default": "刷新剧情列表",
-            "process_paths": processPaths
-        });
-    }
-    
-    // 写入更新后的设置
-    const success = file.writeTextSync(settingsPath, JSON.stringify(settingsArray, null, 2));
-    if (!success) {
-        throw new Error("写入设置文件失败");
-    }
-}
-
-// 文件夹读取函数（优化版）
-async function readFolder(folderPath, onlyJson) {
-    log.info(`开始读取文件夹: ${folderPath}`);
-    const folderStack = [folderPath];
-    const files = [];
-
-    while (folderStack.length > 0) {
-        const currentPath = folderStack.pop();
-        const items = file.ReadPathSync(currentPath);
-        const subFolders = [];
-
-        for (const itemPath of items) {
-            if (file.IsFolder(itemPath)) {
-                subFolders.push(itemPath);
-            } else if (!onlyJson || itemPath.toLowerCase().endsWith(".json")) {
-                const pathParts = itemPath.split(/[\\\/]/).filter(Boolean);
-                const fileName = pathParts.pop();
-                files.push({
-                    fullPath: itemPath,
-                    fileName: fileName,
-                    folderPathArray: pathParts
-                });
-            }
-        }
-
-        // 保持原始顺序添加子文件夹
-        folderStack.push(...subFolders.reverse());
-    }
-
-    return files;
-}
 
 //切换队伍
 async function switchPartyIfNeeded(partyName) {
